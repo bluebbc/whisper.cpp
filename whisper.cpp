@@ -16,6 +16,11 @@
 #include <vector>
 #include <regex>
 #include <random>
+#include <cctype>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 #if defined(GGML_BIG_ENDIAN)
 #include <bit>
@@ -3276,14 +3281,71 @@ static int whisper_wrap_segment(struct whisper_context & ctx, struct whisper_sta
 
     return res;
 }
-
+/*
 static const std::vector<std::string> non_speech_tokens = {
     "\"", "#", "(", ")", "*", "+", "/", ":", ";", "<", "=", ">", "@", "[", "\\", "]", "^",
     "_", "`", "{", "|", "}", "~", "「", "」", "『", "』", "<<", ">>", "<<<", ">>>", "--",
     "---", "-(", "-[", "('", "(\"", "((", "))", "(((", ")))", "[[", "]]", "{{", "}}", "♪♪",
     "♪♪♪","♩", "♪", "♫", "♬", "♭", "♮", "♯"
 };
+*/
+static const std::vector<std::string> non_speech_tokens = {
+	"\"",
+	"#",
+	"(",
+	")",
+	"*",
+	"+",
+	"/",
+	":",
+	";",
+	"<",
+	"=",
+	">",
+	"@",
+	"[",
+	"\\",
+	"]",
+	"^",
+	"_",
+	"`",
+	"{",
+	"|",
+	"}",
+	"~",
+//	"「",
+//	"」",
+//	"『",
+//	"』",
+	"<<",
+	">>",
+	"<<<",
+	">>>",
+	"--",
+	"---",
+	"-(",
+	"-[",
+	"('",
+	"(\"",
+	"((",
+	"))",
+	"(((",
+	")))",
+	"[[",
+	"]]",
+	"{{",
+	"}}",
+	"♪♪",
+//	"♪♪♪",
+//	"♩",
+//	"♪",
+//	"♫",
+//	"♬",
+//	"♭",
+//	"♮",
+//	"♯"
 
+};
 // process the logits for the selected decoder
 // - applies logit filters
 // - computes logprobs and probs
@@ -3293,7 +3355,7 @@ static void whisper_process_logits(
     const struct whisper_full_params   params,
               struct whisper_decoder & decoder,
                                float   temperature) {
-    const auto & vocab      = ctx.vocab;
+	const auto & vocab      = ctx.vocab;
     const auto & tokens_cur = decoder.sequence.tokens;
 
     const bool is_initial = tokens_cur.size() == 0;

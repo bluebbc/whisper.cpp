@@ -18,7 +18,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <float.h>
-
+#include <Windows.h>
 // if C99 - static_assert is noop
 // ref: https://stackoverflow.com/a/53923785/4039976
 #ifndef static_assert
@@ -450,14 +450,14 @@ static inline __m128i packNibbles( __m256i bytes )
 // represented with a single float (delta) and QK/2 8-bit ints (i.e QK 4-bit signed integer factors)
 
 // reference implementation for deterministic creation of model files
-static void quantize_row_q4_0_reference(const float * restrict x, void * restrict y, int k) {
+static void quantize_row_q4_0_reference(const float *  x, void *  y, int k) {
     assert(k % QK == 0);
     const int nb = k / QK;
 
     const size_t bs = sizeof(float) + QK/2;
 
-    uint8_t * restrict pd = ((uint8_t *)y + 0*bs);
-    uint8_t * restrict pb = ((uint8_t *)y + 0*bs + sizeof(float));
+    uint8_t *  pd = ((uint8_t *)y + 0*bs);
+    uint8_t *  pb = ((uint8_t *)y + 0*bs + sizeof(float));
 
     uint8_t pp[QK/2];
 
@@ -493,15 +493,15 @@ static void quantize_row_q4_0_reference(const float * restrict x, void * restric
     }
 }
 
-void quantize_row_q4_0(const float * restrict x, void * restrict y, int k) {
+void quantize_row_q4_0(const float *  x, void *  y, int k) {
     assert(k % QK == 0);
 
 #if defined(__ARM_NEON) || defined(__AVX2__) || defined(__wasm_simd128__) || defined(__POWER9_VECTOR__)
     const int nb = k / QK;
     const size_t bs = sizeof(float) + QK/2;
 
-    uint8_t * restrict pd = ((uint8_t *)y + 0*bs);
-    uint8_t * restrict pb = ((uint8_t *)y + 0*bs + sizeof(float));
+    uint8_t *  pd = ((uint8_t *)y + 0*bs);
+    uint8_t *  pb = ((uint8_t *)y + 0*bs + sizeof(float));
 
     uint8_t pp[QK/2];
 #endif
@@ -697,15 +697,15 @@ void quantize_row_q4_0(const float * restrict x, void * restrict y, int k) {
 // method 4
 // blocks of QK elements
 // represented with 2 floats (min + delta) and QK/2 8-bit ints (i.e QK 4-bit unsigned integer factors)
-void quantize_row_q4_1(const float * restrict x, void * restrict y, int k) {
+void quantize_row_q4_1(const float *  x, void *  y, int k) {
     assert(k % QK == 0);
 
     const int nb = k / QK;
     const size_t bs = 2*sizeof(float) + QK/2;
 
-    uint8_t * restrict pd = ((uint8_t *)y + 0*bs);
-    uint8_t * restrict pm = ((uint8_t *)y + 0*bs +   sizeof(float));
-    uint8_t * restrict pb = ((uint8_t *)y + 0*bs + 2*sizeof(float));
+    uint8_t *  pd = ((uint8_t *)y + 0*bs);
+    uint8_t *  pm = ((uint8_t *)y + 0*bs +   sizeof(float));
+    uint8_t *  pb = ((uint8_t *)y + 0*bs + 2*sizeof(float));
 
     uint8_t pp[QK/2];
 
@@ -746,21 +746,21 @@ void quantize_row_q4_1(const float * restrict x, void * restrict y, int k) {
 }
 
 // TODO: vectorize
-void dequantize_row_q4_0(const void * restrict x, float * restrict y, int k) {
+void dequantize_row_q4_0(const void *  x, float *  y, int k) {
     assert(k % QK == 0);
 
     const int nb = k / QK;
     const size_t bs = sizeof(float) + QK/2;
 
-    const uint8_t * restrict pd = ((const uint8_t *)x + 0*bs);
-    const uint8_t * restrict pb = ((const uint8_t *)x + 0*bs + sizeof(float));
+    const uint8_t *  pd = ((const uint8_t *)x + 0*bs);
+    const uint8_t *  pb = ((const uint8_t *)x + 0*bs + sizeof(float));
 
 #if defined(__AVX2__)
     for (int i = 0; i < nb; i++) {
         // scale factor
         const __m256 d_v = _mm256_broadcast_ss((const float *) (pd + i*bs));
 
-        const uint8_t * restrict pp = pb + i*bs;
+        const uint8_t *  pp = pb + i*bs;
 
         for (int l = 0; l < QK; l += 32) {
             // Load 32x4-bit integers into 32x8-bit integers
@@ -792,7 +792,7 @@ void dequantize_row_q4_0(const void * restrict x, float * restrict y, int k) {
     for (int i = 0; i < nb; i++) {
         const float d = *(const float *) (pd + i*bs);
 
-        const uint8_t * restrict pp = pb + i*bs;
+        const uint8_t *  pp = pb + i*bs;
 
         const float32x4_t vd = vdupq_n_f32(d);
 
@@ -846,7 +846,7 @@ void dequantize_row_q4_0(const void * restrict x, float * restrict y, int k) {
     for (int i = 0; i < nb; i++) {
         const float d = *(const float *) (pd + i*bs);
 
-        const uint8_t * restrict pp = pb + i*bs;
+        const uint8_t *  pp = pb + i*bs;
 
         for (int l = 0; l < QK; l += 2) {
             const uint8_t vi = pp[l/2];
@@ -869,22 +869,22 @@ void dequantize_row_q4_0(const void * restrict x, float * restrict y, int k) {
 #endif
 }
 
-void dequantize_row_q4_1(const void * restrict x, float * restrict y, int k) {
+void dequantize_row_q4_1(const void *  x, float *  y, int k) {
     assert(k % QK == 0);
 
     const int nb = k / QK;
     const size_t bs = 2*sizeof(float) + QK/2;
 
-    const uint8_t * restrict pd = ((const uint8_t *)x + 0*bs);
-    const uint8_t * restrict pm = ((const uint8_t *)x + 0*bs + sizeof(float));
-    const uint8_t * restrict pb = ((const uint8_t *)x + 0*bs + 2*sizeof(float));
+    const uint8_t *  pd = ((const uint8_t *)x + 0*bs);
+    const uint8_t *  pm = ((const uint8_t *)x + 0*bs + sizeof(float));
+    const uint8_t *  pb = ((const uint8_t *)x + 0*bs + 2*sizeof(float));
 
 #if defined(__AVX2__)
     for (int i = 0; i < nb; i++) {
         const __m256 d_v = _mm256_broadcast_ss((const float *) (pd + i*bs));
         const __m256 d_m = _mm256_broadcast_ss((const float *) (pm + i*bs));
 
-        const uint8_t * restrict pp = pb + i*bs;
+        const uint8_t *  pp = pb + i*bs;
 
         for (int l = 0; l < QK; l += 32) {
             // Load 32x4-bit integers into 32x8-bit integers
@@ -914,7 +914,7 @@ void dequantize_row_q4_1(const void * restrict x, float * restrict y, int k) {
         const float d = *(const float *) (pd + i*bs);
         const float m = *(const float *) (pm + i*bs);
 
-        const uint8_t * restrict pp = pb + i*bs;
+        const uint8_t *  pp = pb + i*bs;
 
         for (int l = 0; l < QK; l += 2) {
             const uint8_t vi = pp[l/2];
@@ -1439,7 +1439,7 @@ inline static void ggml_vec_neg_f32 (const int n, float * y, const float * x)   
 inline static void ggml_vec_mul_f32 (const int n, float * z, const float * x, const float * y) { for (int i = 0; i < n; ++i) z[i]  = x[i]*y[i];   }
 inline static void ggml_vec_div_f32 (const int n, float * z, const float * x, const float * y) { for (int i = 0; i < n; ++i) z[i]  = x[i]/y[i];   }
 
-inline static void ggml_vec_dot_f32(const int n, float * restrict s, const float * restrict x, const float * restrict y) {
+inline static void ggml_vec_dot_f32(const int n, float *  s, const float *  x, const float *  y) {
     ggml_float sumf = 0.0;
 
 #ifdef GGML_SIMD
@@ -1489,8 +1489,8 @@ static inline __m512 dot_q4_0_oneblock_avx512(
     const float * d0_0 = (const float *) (pd0 + i*bs);
     const float * d1_0 = (const float *) (pd1 + i*bs);
 
-    const uint8_t * restrict p0 = pb0 + (i+0)*bs;
-    const uint8_t * restrict p1 = pb1 + (i+0)*bs;
+    const uint8_t *  p0 = pb0 + (i+0)*bs;
+    const uint8_t *  p1 = pb1 + (i+0)*bs;
 
     // Compute combined scale for the block
     float scaleScalar = d0_0[0] * d1_0[0];
@@ -1517,7 +1517,7 @@ static inline __m512 dot_q4_0_oneblock_avx512(
 }
 #endif
 
-inline static void ggml_vec_dot_f16(const int n, float * restrict s, ggml_fp16_t * restrict x, ggml_fp16_t * restrict y) {
+inline static void ggml_vec_dot_f16(const int n, float *  s, ggml_fp16_t *  x, ggml_fp16_t *  y) {
     ggml_float sumf = 0.0;
 
 #if defined(GGML_SIMD)
@@ -1553,7 +1553,7 @@ inline static void ggml_vec_dot_f16(const int n, float * restrict s, ggml_fp16_t
     *s = sumf;
 }
 
-inline static void ggml_vec_dot_q4_0(const int n, float * restrict s, const void * restrict x, const void * restrict y) {
+inline static void ggml_vec_dot_q4_0(const int n, float *  s, const void *  x, const void *  y) {
     const int nb = n / QK;
 
     assert(n % QK == 0);
@@ -1561,11 +1561,11 @@ inline static void ggml_vec_dot_q4_0(const int n, float * restrict s, const void
 
     const size_t bs = sizeof(float) + QK/2;
 
-    const uint8_t * restrict pd0 = ((const uint8_t *)x + 0*bs);
-    const uint8_t * restrict pd1 = ((const uint8_t *)y + 0*bs);
+    const uint8_t *  pd0 = ((const uint8_t *)x + 0*bs);
+    const uint8_t *  pd1 = ((const uint8_t *)y + 0*bs);
 
-    const uint8_t * restrict pb0 = ((const uint8_t *)x + 0*bs + sizeof(float));
-    const uint8_t * restrict pb1 = ((const uint8_t *)y + 0*bs + sizeof(float));
+    const uint8_t *  pb0 = ((const uint8_t *)x + 0*bs + sizeof(float));
+    const uint8_t *  pb1 = ((const uint8_t *)y + 0*bs + sizeof(float));
 
     float sumf = 0.0;
 
@@ -1581,8 +1581,8 @@ inline static void ggml_vec_dot_q4_0(const int n, float * restrict s, const void
 
         //printf("d0_0: %f, d1_0: %f, d0_1: %f, d1_1: %f\n", d0_0, d1_0, d0_1, d1_1);
 
-        const uint8_t * restrict p0 = pb0 + i*bs;
-        const uint8_t * restrict p1 = pb1 + i*bs;
+        const uint8_t *  p0 = pb0 + i*bs;
+        const uint8_t *  p1 = pb1 + i*bs;
 
         const uint8x16_t m4b = vdupq_n_u8(0xf);
         const int8x16_t  s8b = vdupq_n_s8(0x8);
@@ -1708,8 +1708,8 @@ inline static void ggml_vec_dot_q4_0(const int n, float * restrict s, const void
         const float * d0_0 = (const float *) (pd0 + i*bs);
         const float * d1_0 = (const float *) (pd1 + i*bs);
 
-        const uint8_t * restrict p0 = pb0 + i*bs;
-        const uint8_t * restrict p1 = pb1 + i*bs;
+        const uint8_t *  p0 = pb0 + i*bs;
+        const uint8_t *  p1 = pb1 + i*bs;
 
         // Compute combined scale for the block
         const __m256 scale = _mm256_mul_ps( _mm256_broadcast_ss( d0_0 ), _mm256_broadcast_ss( d1_0 ) );
@@ -1759,8 +1759,8 @@ inline static void ggml_vec_dot_q4_0(const int n, float * restrict s, const void
         const float d0_1 = *(const float *) (pd0 + (i + 1)*bs);
         const float d1_1 = *(const float *) (pd1 + (i + 1)*bs);
 
-        const uint8_t * restrict p0 = pb0 + i*bs;
-        const uint8_t * restrict p1 = pb1 + i*bs;
+        const uint8_t *  p0 = pb0 + i*bs;
+        const uint8_t *  p1 = pb1 + i*bs;
 
         const v128_t m4b = wasm_u8x16_splat(0xf);
         const v128_t s8b = wasm_i8x16_splat(0x8);
@@ -1837,8 +1837,8 @@ inline static void ggml_vec_dot_q4_0(const int n, float * restrict s, const void
         const float d0 = *(const float *) (pd0 + i*bs);
         const float d1 = *(const float *) (pd1 + i*bs);
 
-        const uint8_t * restrict p0 = pb0 + i*bs;
-        const uint8_t * restrict p1 = pb1 + i*bs;
+        const uint8_t *  p0 = pb0 + i*bs;
+        const uint8_t *  p1 = pb1 + i*bs;
 
         for (int j = 0; j < QK/2; j++) {
             const uint8_t v0 = p0[j];
@@ -1858,19 +1858,19 @@ inline static void ggml_vec_dot_q4_0(const int n, float * restrict s, const void
     *s = sumf;
 }
 
-inline static void ggml_vec_dot_q4_1(const int n, float * restrict s, const void * restrict x, const void * restrict y) {
+inline static void ggml_vec_dot_q4_1(const int n, float *  s, const void *  x, const void *  y) {
     const int nb = n / QK;
 
     const size_t bs = 2*sizeof(float) + QK/2;
 
-    const uint8_t * restrict pd0 = ((const uint8_t *)x + 0*bs);
-    const uint8_t * restrict pd1 = ((const uint8_t *)y + 0*bs);
+    const uint8_t *  pd0 = ((const uint8_t *)x + 0*bs);
+    const uint8_t *  pd1 = ((const uint8_t *)y + 0*bs);
 
-    const uint8_t * restrict pm0 = ((const uint8_t *)x + 0*bs + sizeof(float));
-    const uint8_t * restrict pm1 = ((const uint8_t *)y + 0*bs + sizeof(float));
+    const uint8_t *  pm0 = ((const uint8_t *)x + 0*bs + sizeof(float));
+    const uint8_t *  pm1 = ((const uint8_t *)y + 0*bs + sizeof(float));
 
-    const uint8_t * restrict pb0 = ((const uint8_t *)x + 0*bs + 2*sizeof(float));
-    const uint8_t * restrict pb1 = ((const uint8_t *)y + 0*bs + 2*sizeof(float));
+    const uint8_t *  pb0 = ((const uint8_t *)x + 0*bs + 2*sizeof(float));
+    const uint8_t *  pb1 = ((const uint8_t *)y + 0*bs + 2*sizeof(float));
 
     float sumf = 0.0;
 
@@ -1888,8 +1888,8 @@ inline static void ggml_vec_dot_q4_1(const int n, float * restrict s, const void
         const float * d0 = (const float *) (pd0 + i*bs);
         const float * d1 = (const float *) (pd1 + i*bs);
 
-        const uint8_t * restrict p0 = pb0 + i*bs;
-        const uint8_t * restrict p1 = pb1 + i*bs;
+        const uint8_t *  p0 = pb0 + i*bs;
+        const uint8_t *  p1 = pb1 + i*bs;
 
         const __m256 d0v = _mm256_broadcast_ss( d0 );
         const __m256 d1v = _mm256_broadcast_ss( d1 );
@@ -1958,8 +1958,8 @@ inline static void ggml_vec_dot_q4_1(const int n, float * restrict s, const void
         const float d0 = *(const float *) (pd0 + i*bs);
         const float d1 = *(const float *) (pd1 + i*bs);
 
-        const uint8_t * restrict p0 = pb0 + i*bs;
-        const uint8_t * restrict p1 = pb1 + i*bs;
+        const uint8_t *  p0 = pb0 + i*bs;
+        const uint8_t *  p1 = pb1 + i*bs;
 
         for (int j = 0; j < QK/2; j++) {
             const uint8_t v0 = p0[j];
@@ -1981,10 +1981,10 @@ inline static void ggml_vec_dot_q4_1(const int n, float * restrict s, const void
 
 // compute GGML_VEC_DOT_UNROLL dot products at once
 // xs - x row stride in bytes
-inline static void ggml_vec_dot_f16_unroll(const int n, const int xs, float * restrict s, void * restrict xv, ggml_fp16_t * restrict y) {
+inline static void ggml_vec_dot_f16_unroll(const int n, const int xs, float *  s, void *  xv, ggml_fp16_t *  y) {
     ggml_float sumf[GGML_VEC_DOT_UNROLL] = { 0.0 };
 
-    ggml_fp16_t * restrict x[GGML_VEC_DOT_UNROLL];
+    ggml_fp16_t *  x[GGML_VEC_DOT_UNROLL];
 
     for (int i = 0; i < GGML_VEC_DOT_UNROLL; ++i) {
         x[i] = (ggml_fp16_t *) ((char *) xv + i*xs);
@@ -2034,7 +2034,7 @@ inline static void ggml_vec_dot_f16_unroll(const int n, const int xs, float * re
     }
 }
 
-inline static void ggml_vec_mad_f32(const int n, float * restrict y, const float * restrict x, const float v) {
+inline static void ggml_vec_mad_f32(const int n, float *  y, const float *  x, const float v) {
 #if defined(GGML_SIMD)
     const int np = (n & ~(GGML_F32_STEP - 1));
 

@@ -3,7 +3,7 @@
 #include <cstdio>
 #include <string>
 #include <thread>
-
+#include <algorithm>
 // command-line parameters
 struct whisper_params {
     int32_t n_threads = std::min(4, (int32_t) std::thread::hardware_concurrency());
