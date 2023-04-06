@@ -13,7 +13,7 @@ build-static/
 build-no-accel/
 build-sanitize-addr/
 build-sanitize-thread/
-
+build_x64/
 /main
 /stream
 /command
@@ -35,3 +35,4 @@ examples/whisper.objc/whisper.objc.xcodeproj/project.xcworkspace/xcuserdata
 extra/bench-gg.txt
 
 *.mlmodel*
+install
