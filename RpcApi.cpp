@@ -9,6 +9,9 @@ namespace media {
 			std::function<void(std::string)> fuc = std::bind(&Server::onMessage, this, std::placeholders::_1);
 			srv_->bind("onMessage", fuc);
 
+			std::function<void()> fuc2 = std::bind(&Server::onStop, this);
+			srv_->bind("onStop", fuc2);
+
 			fprintf(stderr, "start rpc srv!\n");
 			srv_->run();
 		});
@@ -27,8 +30,9 @@ namespace media {
 		fprintf(stderr, "onMessage\n");
 	}
 
-	void Server::onStop(std::string msg)
+	void Server::onStop()
 	{
+		fprintf(stderr, "onStop\n");
 		bQuit_ = true;
 	}
 
@@ -46,4 +50,14 @@ namespace media {
 		client_->call("foo");
 	}
 
+	static Server *g_srv = nullptr;
+	void setGlobalServer(Server *srv)
+	{
+		g_srv = srv;
+	}
+
+	Server *getGlobalServer()
+	{
+		return g_srv;
+	}
 }

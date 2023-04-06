@@ -17,6 +17,7 @@
 #include <regex>
 #include <random>
 #include <cctype>
+#include "RpcApi.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -3926,6 +3927,10 @@ int whisper_full_with_state(
 
     // main loop
     while (true) {
+		auto p = media::getGlobalServer();
+		auto s = p->isQuit();
+		if (s)
+			break;
         const int progress_cur = (100*(seek - seek_start))/(seek_end - seek_start);
         while (progress_cur >= progress_prev + progress_step) {
             progress_prev += progress_step;

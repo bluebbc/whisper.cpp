@@ -15,7 +15,6 @@
 
 media::Client g_client;
 media::Server g_server;
-media::Server *g_pSrv = &g_server;
 
 // Terminal color map. 10 colors grouped in ranges [0.0, 0.1, ..., 0.9]
 // Lowest is red, middle is yellow, highest is green.
@@ -657,6 +656,7 @@ bool output_wts(struct whisper_context * ctx, const char * fname, const char * f
 int main(int argc, char ** argv) {
     whisper_params params;
 
+	media::setGlobalServer(&g_server);
 	g_client.test();
     if (whisper_params_parse(argc, argv, params) == false) {
         return 1;

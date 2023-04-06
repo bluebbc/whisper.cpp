@@ -19,7 +19,7 @@ namespace media {
 
 	private:
 		void onMessage(std::string message);
-		void onStop(std::string msg);
+		void onStop();
 
 	private:
 		std::unique_ptr<rpc::server> srv_;
@@ -37,4 +37,6 @@ namespace media {
 		std::unique_ptr<rpc::client> client_;
 	};
 
+	SERVER_API void setGlobalServer(Server *srv);
+	SERVER_API Server *getGlobalServer();
 }
