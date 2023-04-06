@@ -10,78 +10,12 @@
 #include <vector>
 #include <cstring>
 #include <algorithm>
-#include "rpc/client.h"
-#include "rpc/server.h"
 #include <iostream>
+#include "RpcApi.h"
 
-int testrpc() 
-{
-	// Creating a client that connects to the localhost on port 8080
-	rpc::client client("127.0.0.1", 8080);
-
-	// Calling a function with paramters and converting the result to int
-	auto result = client.call("add", 2, 3).as<int>();
-	std::cout << "The result is: " << result << std::endl;
-	client.call("foo");
-
-	return 0;
-}
-
-class Server {
-public:
-	Server()
-	{
-		thread_ = new std::thread([&]() {
-			srv_.reset(new rpc::server(8081));
-			std::function<void(std::string)> fuc = std::bind(&Server::onMessage, this, std::placeholders::_1);
-			srv_->bind("onMessage", fuc);
-
-			fprintf(stderr, "start rpc srv!\n");
-			srv_->run();
-		});
-	}
-
-	bool isQuit()
-	{
-		return bQuit_;
-	}
-
-private:
-	void onMessage(std::string message)
-	{
-		fprintf(stderr, "onMessage\n");
-	}
-
-	void onStop(std::string msg)
-	{
-		bQuit_ = true;
-	}
-
-private:
-	std::unique_ptr<rpc::server> srv_;
-	std::thread* thread_;
-	bool bQuit_ = false;
-};
-
-class Client {
-public:
-	Client()
-	{
-		client_.reset(new rpc::client("127.0.0.1", 8080));
-	}
-
-	void test()
-	{
-		client_->call("foo");
-	}
-
-private:
-	std::unique_ptr<rpc::client> client_;
-};
-
-Client g_client;
-Server g_server;
-Server *g_pSrv = &g_server;
+media::Client g_client;
+media::Server g_server;
+media::Server *g_pSrv = &g_server;
 
 // Terminal color map. 10 colors grouped in ranges [0.0, 0.1, ..., 0.9]
 // Lowest is red, middle is yellow, highest is green.
@@ -722,8 +656,7 @@ bool output_wts(struct whisper_context * ctx, const char * fname, const char * f
 
 int main(int argc, char ** argv) {
     whisper_params params;
-//	testrpc();
-//	return 0;
+
 	g_client.test();
     if (whisper_params_parse(argc, argv, params) == false) {
         return 1;
