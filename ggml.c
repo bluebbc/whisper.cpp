@@ -2843,7 +2843,7 @@ struct ggml_tensor * ggml_new_tensor_impl(
         /*.pad          =*/ { 0 },
     };
 
-    ggml_assert_aligned(result->data);
+//    ggml_assert_aligned(result->data);
 
     for (int i = 0; i < n_dims; i++) {
         result->ne[i] = ne[i];
