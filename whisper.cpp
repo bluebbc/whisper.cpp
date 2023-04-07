@@ -3925,6 +3925,7 @@ int whisper_full_with_state(
 
     std::vector<beam_candidate> beam_candidates;
 
+	auto pClient = media::getGlobalClient();
     // main loop
     while (true) {
 		auto p = media::getGlobalServer();
@@ -3936,6 +3937,9 @@ int whisper_full_with_state(
             progress_prev += progress_step;
             if (params.print_progress) {
                 fprintf(stderr, "%s: progress = %3d%%\n", __func__, progress_prev);
+				if (pClient) {
+					pClient->progress(progress_prev);
+				}
             }
         }
         if (params.progress_callback) {

@@ -657,7 +657,8 @@ int main(int argc, char ** argv) {
     whisper_params params;
 
 	media::setGlobalServer(&g_server);
-	g_client.test();
+	media::setGlobalClient(&g_client);
+
     if (whisper_params_parse(argc, argv, params) == false) {
         return 1;
     }
@@ -781,7 +782,6 @@ int main(int argc, char ** argv) {
                 return 10;
             }
 			fprintf(stderr, "whisper_full_parallel\n");
-			g_client.test();
         }
 
         // output stuff
@@ -828,6 +828,5 @@ int main(int argc, char ** argv) {
 
     whisper_print_timings(ctx);
     whisper_free(ctx);
-	g_client.test();
     return 0;
 }
