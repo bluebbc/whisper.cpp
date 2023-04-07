@@ -11,42 +11,70 @@
 #endif
 
 namespace media {
+enum APPState{
+    stoped_ = 0,
+    running_
+};
+class  SERVER_API SDKServer {
+public:
+    SDKServer(int port = 8081);
+    ~SDKServer();
+    int stopServer();
 
-	class  SERVER_API Server {
-	public:
-		Server(int port = 8081);
-		~Server();
-        int stopServer();
-		bool isQuit();
+private:
+    void onProgress(float v);
+    int onState(int state);
 
-	private:
-		void onProgress(float v);
-		void onStop();
+private:
+    std::unique_ptr<rpc::server> srv_;
+    std::thread* thread_;
+};
 
-	private:
-		std::unique_ptr<rpc::server> srv_;
-		std::thread* thread_;
-		bool bQuit_ = false;
-	};
+class SERVER_API  SDKClient {
+public:
+    SDKClient(int port = 8080);
+    ~SDKClient();
+    void stop();
+private:
+    bool is_connect();
+private:
+    std::unique_ptr<rpc::client> client_;
+    int port_;
+};
 
-	class SERVER_API  Client {
-	public:
-		Client(int port = 8080);
-		~Client();
-		void test();
-		void progress(float v);
-		void stop();
-    private:
-        bool is_connect();
-	private:
-		std::unique_ptr<rpc::client> client_;
-        int port_;
-	};
+class  SERVER_API AppServer {
+public:
+    AppServer(int port = 8081);
+    ~AppServer();
+    int stopServer();
+    bool isQuit();
 
-	SERVER_API void setGlobalServer(Server *srv);
-	SERVER_API Server *getGlobalServer();
+private:
+    void onStop();
 
-	SERVER_API void setGlobalClient(Client *cli);
-	SERVER_API Client *getGlobalClient();
+private:
+    std::unique_ptr<rpc::server> srv_;
+    std::thread* thread_;
+    bool bQuit_ = false;
+};
+
+class SERVER_API  AppClient {
+public:
+    AppClient(int port = 8080);
+    ~AppClient();
+    void progress(float v);
+    int state(int s);
+private:
+    bool is_connect();
+private:
+    std::unique_ptr<rpc::client> client_;
+    int port_;
+};
+
+SERVER_API void setGlobalAppServer(AppServer *srv);
+SERVER_API AppServer *getGlobalAppServer();
+
+SERVER_API void setGlobalAppClient(AppClient *cli);
+SERVER_API AppClient *getGlobalAppClient();
 
 }

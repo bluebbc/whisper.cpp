@@ -3925,10 +3925,10 @@ int whisper_full_with_state(
 
     std::vector<beam_candidate> beam_candidates;
 
-	auto pClient = media::getGlobalClient();
+	auto pClient = media::getGlobalAppClient();
     // main loop
     while (true) {
-		auto p = media::getGlobalServer();
+		auto p = media::getGlobalAppServer();
 		auto s = p->isQuit();
 		if (s)
 			break;

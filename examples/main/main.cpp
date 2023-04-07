@@ -13,8 +13,8 @@
 #include <iostream>
 #include "RpcApi.h"
 
-media::Client g_client;
-media::Server g_server;
+media::AppClient g_client;
+media::AppServer g_server;
 
 // Terminal color map. 10 colors grouped in ranges [0.0, 0.1, ..., 0.9]
 // Lowest is red, middle is yellow, highest is green.
@@ -656,8 +656,8 @@ bool output_wts(struct whisper_context * ctx, const char * fname, const char * f
 int main(int argc, char ** argv) {
     whisper_params params;
 
-	media::setGlobalServer(&g_server);
-	media::setGlobalClient(&g_client);
+	media::setGlobalAppServer(&g_server);
+	media::setGlobalAppClient(&g_client);
 
     if (whisper_params_parse(argc, argv, params) == false) {
         return 1;
@@ -828,5 +828,6 @@ int main(int argc, char ** argv) {
 
     whisper_print_timings(ctx);
     whisper_free(ctx);
+	g_client.state(0);
     return 0;
 }
