@@ -828,6 +828,7 @@ int main(int argc, char ** argv) {
 
     whisper_print_timings(ctx);
     whisper_free(ctx);
-	g_client.state(0);
+	if (g_server.isQuit())
+		return 4;
     return 0;
 }
