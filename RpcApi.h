@@ -12,14 +12,19 @@
 
 namespace media {
 enum APPState{
-    stoped_ = 0,
-    running_
+    Running  = 1,
+    Pause    = 2,
+    Complete = 3,
+    Cancel   = 4,
+    Error    = 10,
+    UnknownError = 99
 };
 class  SERVER_API SDKServer {
 public:
     SDKServer(int port = 8081);
     ~SDKServer();
     int stopServer();
+    void setCallback(std::function<void(int state, float progress)> cb);
 
 private:
     void onProgress(float v);
@@ -28,6 +33,7 @@ private:
 private:
     std::unique_ptr<rpc::server> srv_;
     std::thread* thread_;
+    std::function<void(int state, float progress)> cb_;
 };
 
 class SERVER_API  SDKClient {
