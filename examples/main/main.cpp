@@ -13,9 +13,6 @@
 #include <iostream>
 #include "RpcApi.h"
 
-media::AppClient g_client;
-media::AppServer g_server;
-
 // Terminal color map. 10 colors grouped in ranges [0.0, 0.1, ..., 0.9]
 // Lowest is red, middle is yellow, highest is green.
 const std::vector<std::string> k_colors = {
@@ -93,6 +90,9 @@ struct whisper_params {
 
     std::vector<std::string> fname_inp = {};
     std::vector<std::string> fname_out = {};
+
+	uint16_t sdk_port;
+	uint16_t app_port;
 };
 
 void whisper_print_usage(int argc, char ** argv, const whisper_params & params);
@@ -147,6 +147,8 @@ bool whisper_params_parse(int argc, char ** argv, whisper_params & params) {
         else if (arg == "-l"    || arg == "--language")       { params.language       = argv[++i]; }
         else if (                  arg == "--prompt")         { params.prompt         = argv[++i]; }
         else if (arg == "-m"    || arg == "--model")          { params.model          = argv[++i]; }
+		else if (arg == "-sp" || arg == "--sdk-port")		  { params.sdk_port = std::stoi(argv[++i]); }
+		else if (arg == "-ap" || arg == "--app-port")         { params.app_port = std::stoi(argv[++i]); }
         else if (arg == "-f"    || arg == "--file")           { params.fname_inp.emplace_back(argv[++i]); }
         else {
             fprintf(stderr, "error: unknown argument: %s\n", arg.c_str());
@@ -656,9 +658,6 @@ bool output_wts(struct whisper_context * ctx, const char * fname, const char * f
 int main(int argc, char ** argv) {
     whisper_params params;
 
-	media::setGlobalAppServer(&g_server);
-	media::setGlobalAppClient(&g_client);
-
     if (whisper_params_parse(argc, argv, params) == false) {
         return 1;
     }
@@ -674,6 +673,11 @@ int main(int argc, char ** argv) {
         whisper_print_usage(argc, argv, params);
         exit(0);
     }
+
+	std::unique_ptr<media::AppServer> g_server(new media::AppServer(params.app_port));
+	std::unique_ptr<media::AppClient> g_client(new media::AppClient(params.sdk_port));
+	media::setGlobalAppServer(g_server.get());
+	media::setGlobalAppClient(g_client.get());
 
     // whisper init
 
@@ -828,7 +832,7 @@ int main(int argc, char ** argv) {
 
     whisper_print_timings(ctx);
     whisper_free(ctx);
-	if (g_server.isQuit())
+	if (g_server->isQuit())
 		return 4;
     return 0;
 }
