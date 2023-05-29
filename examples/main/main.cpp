@@ -334,6 +334,44 @@ bool output_vtt(struct whisper_context * ctx, const char * fname) {
     return true;
 }
 
+static std::wstring utf8ToUnicode(const std::string& str) {
+	int len = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.size(), NULL, 0);
+	std::wstring result(len, L'\0');
+	MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.size(), &result[0], len);
+	return result;
+}
+
+static std::string unicodeToUtf8(const std::wstring& str) {
+	int len = WideCharToMultiByte(CP_UTF8, 0, str.c_str(), str.size(), NULL, 0, NULL, NULL);
+	std::string result(len, '\0');
+	WideCharToMultiByte(CP_UTF8, 0, str.c_str(), str.size(), &result[0], len, NULL, NULL);
+	return result;
+}
+
+static std::string readFromFile(const std::string& filename) {
+	std::ifstream file(filename);
+	std::string content;
+	std::string line;
+	while (std::getline(file, line)) {
+		content += line;
+		content += "\n";
+	}
+	return content;
+}
+
+static void writeToFile(const std::string& filename, const std::string& content) {
+	std::ofstream file(filename);
+	file << content;
+	file.close();
+}
+
+static std::string utf8Repair(std::string srcText)
+{
+	auto w1 = utf8ToUnicode(srcText);
+	auto w2 = unicodeToUtf8(w1);
+	return w2;
+}
+
 bool output_srt(struct whisper_context * ctx, const char * fname, const whisper_params & params) {
     std::ofstream fout(fname);
     if (!fout.is_open()) {
@@ -351,7 +389,8 @@ bool output_srt(struct whisper_context * ctx, const char * fname, const whisper_
 
         fout << i + 1 + params.offset_n << "\n";
         fout << to_timestamp(t0, true) << " --> " << to_timestamp(t1, true) << "\n";
-        fout << text << "\n\n";
+		std::string src(text);
+        fout << utf8Repair(src) << "\n\n";
     }
 
     return true;
