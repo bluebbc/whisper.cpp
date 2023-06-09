@@ -1,6 +1,8 @@
 *.o
 *.a
 .cache/
+.coreml/
+.test/
 .vs/
 .vscode/
 .DS_Store
@@ -10,16 +12,18 @@ build-em/
 build-debug/
 build-release/
 build-static/
+build-cublas/
 build-no-accel/
 build-sanitize-addr/
 build-sanitize-thread/
-build_x64/
+
 /main
 /stream
 /command
 /talk
 /talk-llama
 /bench
+/quantize
 
 arm_neon.h
 sync.sh
@@ -34,5 +38,12 @@ examples/whisper.objc/whisper.objc.xcodeproj/project.xcworkspace/xcuserdata
 
 extra/bench-gg.txt
 
-*.mlmodel*
-install
+models/*.mlmodel
+models/*.mlmodelc
+models/*.mlpackage
+bindings/java/.gradle/
+bindings/java/.idea/
+.idea/
+build_x64
+build_x64_old
+lib/rpcd.lib

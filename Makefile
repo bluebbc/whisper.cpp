@@ -1,3 +1,5 @@
+default: main bench quantize
+
 ifndef UNAME_S
 UNAME_S := $(shell uname -s)
 endif
@@ -77,10 +79,6 @@ ifeq ($(UNAME_M),$(filter $(UNAME_M),x86_64 i686))
 			CFLAGS += -mavx2
 		endif
 	else ifeq ($(UNAME_S),Linux)
-		AVX1_M := $(shell grep "avx " /proc/cpuinfo)
-		ifneq (,$(findstring avx,$(AVX1_M)))
-			CFLAGS += -mavx
-		endif
 		AVX2_M := $(shell grep "avx2 " /proc/cpuinfo)
 		ifneq (,$(findstring avx2,$(AVX2_M)))
 			CFLAGS += -mavx2
@@ -92,16 +90,17 @@ ifeq ($(UNAME_M),$(filter $(UNAME_M),x86_64 i686))
 		F16C_M := $(shell grep "f16c " /proc/cpuinfo)
 		ifneq (,$(findstring f16c,$(F16C_M)))
 			CFLAGS += -mf16c
+
+			AVX1_M := $(shell grep "avx " /proc/cpuinfo)
+			ifneq (,$(findstring avx,$(AVX1_M)))
+				CFLAGS += -mavx
+			endif
 		endif
 		SSE3_M := $(shell grep "sse3 " /proc/cpuinfo)
 		ifneq (,$(findstring sse3,$(SSE3_M)))
 			CFLAGS += -msse3
 		endif
 	else ifeq ($(UNAME_S),Haiku)
-		AVX1_M := $(shell sysinfo -cpu | grep "AVX ")
-		ifneq (,$(findstring avx,$(AVX1_M)))
-			CFLAGS += -mavx
-		endif
 		AVX2_M := $(shell sysinfo -cpu | grep "AVX2 ")
 		ifneq (,$(findstring avx2,$(AVX2_M)))
 			CFLAGS += -mavx2
@@ -113,6 +112,11 @@ ifeq ($(UNAME_M),$(filter $(UNAME_M),x86_64 i686))
 		F16C_M := $(shell sysinfo -cpu | grep "F16C ")
 		ifneq (,$(findstring f16c,$(F16C_M)))
 			CFLAGS += -mf16c
+
+			AVX1_M := $(shell sysinfo -cpu | grep "AVX ")
+			ifneq (,$(findstring avx,$(AVX1_M)))
+				CFLAGS += -mavx
+			endif
 		endif
 	else
 		CFLAGS += -mfma -mf16c -mavx -mavx2
@@ -121,6 +125,7 @@ endif
 ifeq ($(UNAME_M),amd64)
 	CFLAGS += -mavx -mavx2 -mfma -mf16c
 endif
+
 ifneq ($(filter ppc64%,$(UNAME_M)),)
 	POWER9_M := $(shell grep "POWER9" /proc/cpuinfo)
 	ifneq (,$(findstring POWER9,$(POWER9_M)))
@@ -131,6 +136,7 @@ ifneq ($(filter ppc64%,$(UNAME_M)),)
 		CXXFLAGS += -std=c++23 -DGGML_BIG_ENDIAN
 	endif
 endif
+
 ifndef WHISPER_NO_ACCELERATE
 	# Mac M1 - include Accelerate framework
 	ifeq ($(UNAME_S),Darwin)
@@ -138,32 +144,71 @@ ifndef WHISPER_NO_ACCELERATE
 		LDFLAGS += -framework Accelerate
 	endif
 endif
+
+ifdef WHISPER_COREML
+	CXXFLAGS += -DWHISPER_USE_COREML
+	LDFLAGS  += -framework Foundation -framework CoreML
+
+ifdef WHISPER_COREML_ALLOW_FALLBACK
+	CXXFLAGS += -DWHISPER_COREML_ALLOW_FALLBACK
+endif
+endif
+
 ifdef WHISPER_OPENBLAS
 	CFLAGS  += -DGGML_USE_OPENBLAS -I/usr/local/include/openblas
 	LDFLAGS += -lopenblas
 endif
+
+ifdef WHISPER_CUBLAS
+	CFLAGS      += -DGGML_USE_CUBLAS -I/usr/local/cuda/include -I/opt/cuda/include -I$(CUDA_PATH)/targets/x86_64-linux/include
+	CXXFLAGS    += -DGGML_USE_CUBLAS -I/usr/local/cuda/include -I/opt/cuda/include -I$(CUDA_PATH)/targets/x86_64-linux/include
+	LDFLAGS     += -lcublas -lculibos -lcudart -lcublasLt -lpthread -ldl -lrt -L/usr/local/cuda/lib64 -L/opt/cuda/lib64 -L$(CUDA_PATH)/targets/x86_64-linux/lib
+	WHISPER_OBJ += ggml-cuda.o
+	NVCC        = nvcc
+	NVCCFLAGS   = --forward-unknown-to-host-compiler -arch=native
+
+ggml-cuda.o: ggml-cuda.cu ggml-cuda.h
+	$(NVCC) $(NVCCFLAGS) $(CXXFLAGS) -Wno-pedantic -c $< -o $@
+endif
+
+ifdef WHISPER_CLBLAST
+	CFLAGS 		+= -DGGML_USE_CLBLAST
+	LDFLAGS	 	+= -lclblast -lOpenCL
+	WHISPER_OBJ	+= ggml-opencl.o
+	
+ggml-opencl.o: ggml-opencl.c ggml-opencl.h
+	$(CC) $(CFLAGS) -c $< -o $@
+endif
+
 ifdef WHISPER_GPROF
 	CFLAGS   += -pg
 	CXXFLAGS += -pg
 endif
+
 ifneq ($(filter aarch64%,$(UNAME_M)),)
-	CFLAGS += -mcpu=native
+	CFLAGS   += -mcpu=native
 	CXXFLAGS += -mcpu=native
 endif
+
 ifneq ($(filter armv6%,$(UNAME_M)),)
 	# 32-bit Raspberry Pi 1, 2, 3
 	CFLAGS += -mfpu=neon -mfp16-format=ieee -mno-unaligned-access
 endif
+
 ifneq ($(filter armv7%,$(UNAME_M)),)
 	# 32-bit ARM, for example on Armbian or possibly raspbian
-	CFLAGS += -mfpu=neon -mfp16-format=ieee -mno-unaligned-access -funsafe-math-optimizations
-	
-	# 64-bit ARM, use these (TODO: auto-detect 64-bit)
-	# CFLAGS += -mfpu=neon-fp-armv8 -mfp16-format=ieee -mno-unaligned-access -funsafe-math-optimizations
+	#CFLAGS   += -mfpu=neon -mfp16-format=ieee -funsafe-math-optimizations -mno-unaligned-access
+	#CXXFLAGS += -mfpu=neon -mfp16-format=ieee -funsafe-math-optimizations -mno-unaligned-access
+
+	# 64-bit ARM on 32-bit OS, use these (TODO: auto-detect 64-bit)
+	CFLAGS   += -mfpu=neon-fp-armv8 -mfp16-format=ieee -funsafe-math-optimizations -mno-unaligned-access
+	CXXFLAGS += -mfpu=neon-fp-armv8 -mfp16-format=ieee -funsafe-math-optimizations -mno-unaligned-access
 endif
+
 ifneq ($(filter armv8%,$(UNAME_M)),)
 	# Raspberry Pi 4
-	CFLAGS += -mfp16-format=ieee -mno-unaligned-access
+	CFLAGS   += -mfpu=neon-fp-armv8 -mfp16-format=ieee -funsafe-math-optimizations -mno-unaligned-access
+	CXXFLAGS += -mfpu=neon-fp-armv8 -mfp16-format=ieee -funsafe-math-optimizations -mno-unaligned-access
 endif
 
 #
@@ -181,26 +226,36 @@ $(info I CC:       $(CCV))
 $(info I CXX:      $(CXXV))
 $(info )
 
-default: main bench
-
 #
 # Build library
 #
 
-ggml.o: ggml.c ggml.h
-	$(CC)  $(CFLAGS)   -c ggml.c -o ggml.o
+ggml.o: ggml.c ggml.h ggml-cuda.h
+	$(CC)  $(CFLAGS)   -c $< -o $@
 
-whisper.o: whisper.cpp whisper.h
-	$(CXX) $(CXXFLAGS) -c whisper.cpp -o whisper.o
+whisper.o: whisper.cpp whisper.h ggml.h ggml-cuda.h
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-libwhisper.a: ggml.o whisper.o
-	$(AR) rcs libwhisper.a ggml.o whisper.o
+ifndef WHISPER_COREML
+WHISPER_OBJ += whisper.o
+else
+whisper-encoder.o: coreml/whisper-encoder.mm coreml/whisper-encoder.h
+	$(CXX) -O3 -I . -fobjc-arc -c coreml/whisper-encoder.mm -o whisper-encoder.o
 
-libwhisper.so: ggml.o whisper.o
-	$(CXX) $(CXXFLAGS) -shared -o libwhisper.so ggml.o whisper.o $(LDFLAGS)
+whisper-encoder-impl.o: coreml/whisper-encoder-impl.m coreml/whisper-encoder-impl.h
+	$(CXX) -O3 -I . -fobjc-arc -c coreml/whisper-encoder-impl.m -o whisper-encoder-impl.o
+
+WHISPER_OBJ += whisper.o whisper-encoder.o whisper-encoder-impl.o
+endif
+
+libwhisper.a: ggml.o $(WHISPER_OBJ)
+	$(AR) rcs libwhisper.a ggml.o $(WHISPER_OBJ)
+
+libwhisper.so: ggml.o $(WHISPER_OBJ)
+	$(CXX) $(CXXFLAGS) -shared -o libwhisper.so ggml.o $(WHISPER_OBJ) $(LDFLAGS)
 
 clean:
-	rm -f *.o main stream command talk talk-llama bench libwhisper.a libwhisper.so
+	rm -f *.o main stream command talk talk-llama bench quantize libwhisper.a libwhisper.so
 
 #
 # Examples
@@ -208,27 +263,30 @@ clean:
 
 CC_SDL=`sdl2-config --cflags --libs`
 
-SRC_COMMON = examples/common.cpp
+SRC_COMMON     = examples/common.cpp examples/common-ggml.cpp
 SRC_COMMON_SDL = examples/common-sdl.cpp
 
-main: examples/main/main.cpp $(SRC_COMMON) ggml.o whisper.o
-	$(CXX) $(CXXFLAGS) examples/main/main.cpp $(SRC_COMMON) ggml.o whisper.o -o main $(LDFLAGS)
+main: examples/main/main.cpp $(SRC_COMMON) ggml.o $(WHISPER_OBJ)
+	$(CXX) $(CXXFLAGS) examples/main/main.cpp $(SRC_COMMON) ggml.o $(WHISPER_OBJ) -o main $(LDFLAGS)
 	./main -h
 
-bench: examples/bench/bench.cpp ggml.o whisper.o
-	$(CXX) $(CXXFLAGS) examples/bench/bench.cpp ggml.o whisper.o -o bench $(LDFLAGS)
+bench: examples/bench/bench.cpp ggml.o $(WHISPER_OBJ)
+	$(CXX) $(CXXFLAGS) examples/bench/bench.cpp ggml.o $(WHISPER_OBJ) -o bench $(LDFLAGS)
 
-stream: examples/stream/stream.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o whisper.o
-	$(CXX) $(CXXFLAGS) examples/stream/stream.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o whisper.o -o stream $(CC_SDL) $(LDFLAGS)
+quantize: examples/quantize/quantize.cpp ggml.o $(WHISPER_OBJ) $(SRC_COMMON)
+	$(CXX) $(CXXFLAGS) examples/quantize/quantize.cpp $(SRC_COMMON) ggml.o $(WHISPER_OBJ) -o quantize $(LDFLAGS)
 
-command: examples/command/command.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o whisper.o
-	$(CXX) $(CXXFLAGS) examples/command/command.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o whisper.o -o command $(CC_SDL) $(LDFLAGS)
+stream: examples/stream/stream.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o $(WHISPER_OBJ)
+	$(CXX) $(CXXFLAGS) examples/stream/stream.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o $(WHISPER_OBJ) -o stream $(CC_SDL) $(LDFLAGS)
 
-talk: examples/talk/talk.cpp examples/talk/gpt-2.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o whisper.o
-	$(CXX) $(CXXFLAGS) examples/talk/talk.cpp examples/talk/gpt-2.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o whisper.o -o talk $(CC_SDL) $(LDFLAGS)
+command: examples/command/command.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o $(WHISPER_OBJ)
+	$(CXX) $(CXXFLAGS) examples/command/command.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o $(WHISPER_OBJ) -o command $(CC_SDL) $(LDFLAGS)
 
-talk-llama: examples/talk-llama/talk-llama.cpp examples/talk-llama/llama.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o whisper.o
-	$(CXX) $(CXXFLAGS) examples/talk-llama/talk-llama.cpp examples/talk-llama/llama.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o whisper.o -o talk-llama $(CC_SDL) $(LDFLAGS)
+talk: examples/talk/talk.cpp examples/talk/gpt-2.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o $(WHISPER_OBJ)
+	$(CXX) $(CXXFLAGS) examples/talk/talk.cpp examples/talk/gpt-2.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o $(WHISPER_OBJ) -o talk $(CC_SDL) $(LDFLAGS)
+
+talk-llama: examples/talk-llama/talk-llama.cpp examples/talk-llama/llama.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o $(WHISPER_OBJ)
+	$(CXX) $(CXXFLAGS) examples/talk-llama/talk-llama.cpp examples/talk-llama/llama.cpp $(SRC_COMMON) $(SRC_COMMON_SDL) ggml.o $(WHISPER_OBJ) -o talk-llama $(CC_SDL) $(LDFLAGS)
 
 #
 # Audio samples
